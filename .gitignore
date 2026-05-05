@@ -1,0 +1,12 @@
+.venv/
+.claude/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.mp4
+*.mp3
+*.webm
+*.m4a
