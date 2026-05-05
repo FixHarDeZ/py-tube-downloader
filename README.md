@@ -2,6 +2,8 @@
 
 A Python desktop application for downloading YouTube videos and playlists, with quality selection, real-time progress, and subtitle support.
 
+![py-tube-downloader screenshot](screenshot/py-tube-downloader.png)
+
 ---
 
 ## Features
