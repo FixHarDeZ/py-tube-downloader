@@ -3,14 +3,13 @@ from __future__ import annotations
 import uuid
 from collections import deque
 
-from PyQt6.QtCore import QThread, Qt, pyqtSignal
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -18,29 +17,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src import playlist as playlist_module
 from src.downloader import DownloadWorker
 from src.gui.components.progress_bar import DownloadItem
 from src.gui.components.settings_panel import SettingsPanel
 from src.gui.theme import APP_STYLE
 from src.i18n import lang_manager, t
 from src.utils import config as config_module
-
-
-class _FetchWorker(QThread):
-    ready = pyqtSignal(str, list)
-    error = pyqtSignal(str)
-
-    def __init__(self, url: str, parent=None):
-        super().__init__(parent)
-        self.url = url
-
-    def run(self) -> None:
-        try:
-            name, entries = playlist_module.fetch_info(self.url)
-            self.ready.emit(name, entries)
-        except Exception as e:
-            self.error.emit(str(e))
 
 
 class MainWindow(QMainWindow):
@@ -50,7 +32,6 @@ class MainWindow(QMainWindow):
         self._workers: dict[str, DownloadWorker] = {}
         self._items: dict[str, DownloadItem] = {}
         self._queue: deque[dict] = deque()
-        self._fetch_worker: _FetchWorker | None = None
 
         lang_manager.set_lang(self._config.get("language", "en"))
         lang_manager.language_changed.connect(self._retranslate)
@@ -151,40 +132,17 @@ class MainWindow(QMainWindow):
         url = self._url_input.text().strip()
         if not url:
             return
-        self._set_input_enabled(False)
-        self.statusBar().showMessage(t("fetching_status"))
 
-        self._fetch_worker = _FetchWorker(url)
-        self._fetch_worker.ready.connect(self._on_fetch_ready)
-        self._fetch_worker.error.connect(self._on_fetch_error)
-        self._fetch_worker.finished.connect(self._on_fetch_done)
-        self._fetch_worker.start()
+        task_id = str(uuid.uuid4())
+        item = DownloadItem(task_id, url)
+        item.cancel_requested.connect(self._cancel_task)
+        self._list_layout.addWidget(item)
+        self._items[task_id] = item
+        self._queue.append({"task_id": task_id, "url": url})
 
-    def _on_fetch_ready(self, playlist_name: str, entries: list[dict]) -> None:
-        for entry in entries:
-            task_id = str(uuid.uuid4())
-            item = DownloadItem(task_id, entry["title"] or entry["url"])
-            item.cancel_requested.connect(self._cancel_task)
-            self._list_layout.addWidget(item)
-            self._items[task_id] = item
-            self._queue.append({
-                "task_id": task_id,
-                "url": entry["url"],
-                "playlist_name": playlist_name or None,
-            })
-        count = len(entries)
-        key = "queued_status_one" if count == 1 else "queued_status_many"
-        self.statusBar().showMessage(t(key, count=count))
-        self._drain_queue()
-
-    def _on_fetch_error(self, message: str) -> None:
-        QMessageBox.critical(self, t("error_fetch_title"), t("error_fetch_msg", message=message))
-        self.statusBar().showMessage(t("ready_status"))
-
-    def _on_fetch_done(self) -> None:
-        self._set_input_enabled(True)
         self._url_input.clear()
-        self._url_input.setFocus()
+        self.statusBar().showMessage(t("queued_status"))
+        self._drain_queue()
 
     def _drain_queue(self) -> None:
         max_concurrent: int = self._config.get("max_concurrent", 3)
@@ -198,7 +156,6 @@ class MainWindow(QMainWindow):
             output_folder=self._settings.output_folder,
             fmt=self._settings.format,
             quality=self._settings.quality,
-            playlist_name=task.get("playlist_name"),
             write_subs=self._settings.write_subs,
         )
         worker.progress.connect(self._on_progress)
@@ -237,10 +194,6 @@ class MainWindow(QMainWindow):
                 item.set_cancelled()
 
     # ── Helpers ───────────────────────────────────────────────
-
-    def _set_input_enabled(self, enabled: bool) -> None:
-        self._url_input.setEnabled(enabled)
-        self._download_btn.setEnabled(enabled)
 
     def _on_folder_changed(self, folder: str) -> None:
         self._config["output_folder"] = folder

@@ -1,6 +1,6 @@
 # py-tube-downloader
 
-A Python desktop application for downloading YouTube videos and playlists, with quality selection, real-time progress, and subtitle support.
+A Python desktop application for downloading YouTube videos, with quality selection, real-time progress, and subtitle support.
 
 ![py-tube-downloader screenshot](screenshot/py-tube-downloader.png)
 
@@ -9,7 +9,7 @@ A Python desktop application for downloading YouTube videos and playlists, with 
 ## Features
 
 ### Phase 1 — Core (available now)
-- Download a single video or an entire playlist by URL
+- Download a YouTube video by URL
 - Quality selection: Best, 1080p, 720p, 480p, 360p (up to **4K / 2160p**)
 - Output format: **MP4** (video) or **MP3** (audio)
 - Choose destination folder
@@ -76,7 +76,7 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-1. Paste a YouTube video or playlist URL
+1. Paste a YouTube video URL
 2. Select quality and format
 3. Choose output folder
 4. Click **Download**

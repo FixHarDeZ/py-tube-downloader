@@ -37,7 +37,6 @@ class DownloadWorker(QThread):
         output_folder: str,
         fmt: str = "mp4",
         quality: str = "best",
-        playlist_name: str | None = None,
         write_subs: bool = False,
         parent=None,
     ):
@@ -47,7 +46,6 @@ class DownloadWorker(QThread):
         self.output_folder = output_folder
         self.fmt = fmt
         self.quality = quality
-        self.playlist_name = playlist_name
         self.write_subs = write_subs
         self._cancelled = False
 
@@ -55,7 +53,7 @@ class DownloadWorker(QThread):
         self._cancelled = True
 
     def run(self) -> None:
-        outtmpl = build_output_template(self.output_folder, self.playlist_name)
+        outtmpl = build_output_template(self.output_folder)
 
         ydl_opts: dict = {
             "outtmpl": outtmpl,
@@ -64,7 +62,7 @@ class DownloadWorker(QThread):
             "noprogress": True,
             "progress_hooks": [self._hook],
             "noplaylist": True,
-            "extractor_args": {"youtube": {"player_client": ["android_vr"]}},
+            "extractor_args": {"youtube": {"player_client": ["android_vr", "web"]}},
         }
 
         if self.fmt == "mp3":
